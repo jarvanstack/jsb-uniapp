@@ -3,7 +3,7 @@
 		<view class="main">
 
 			<scroll-view class="messages" scroll-y="true" :scroll-into-view="scroll_into_view" show-scrollbar="true"
-				scroll-with-animation="true" >
+				scroll-with-animation="true">
 				<view v-for="(message,index) in messages" :key="index" :id="'aaa'+index">
 					<view class="system_message" v-show="!message.is_user" :style="getHeight(message.message)">
 						{{message.message}}
@@ -36,36 +36,26 @@
 				},
 				shurukuang: '',
 				messages: [{
-						username: '系统',
-						is_user: false,
-						message: "您好,这里是石头剪刀布游戏，开始游戏输入「jsb」"
-					},
-					{
-						username: '系统',
-						is_user: false,
-						message: "自动选择人机模式"
-					},
-					{
-						username: '用户',
-						is_user: true,
-						message: "jsb"
-					},
-					{
-						username: '用户',
-						is_user: true,
-						message: "jsb"
-					}
-				],
+					username: '系统',
+					is_user: false,
+					message: '您好,欢迎来到石头剪刀布游戏'
+				},
+				{
+					username: '系统',
+					is_user: false,
+					message: '1.新建房间输入「jsb」2.输入房间号进入「房间号」比如「13」3.开始对局输入「j」「s」「b」代表剪刀、石头、步 4.输入「dl」重新登录 5.输入「jl」查看对局记录'
+				}],
 				socketTask: null,
 				// 确保websocket是打开状态
 				is_open_socket: false,
 				scroll_into_view: ''
 			}
 		},
-		onLoad() {
-			//初始化socket
-			this.connectSocketInit();
-
+		//每次连接时候检查是否连接socket没有连接就自动连接
+		onShow() {
+			console.log("index.onShow()");
+			console.log("index.onShow()重新连接");
+			this.connectSocketInit()
 		},
 		// 关闭websocket【必须在实例销毁之前关闭,否则会是underfined错误】
 		beforeDestroy() {
@@ -97,13 +87,37 @@
 			},
 			fasong() {
 				let message = this.shurukuang
-				//1.首先发送信息到用户框
-				this.fasong_to_messages(message)
-				//发送信息到后端服务器
-				//如果websocket是连接的
-				if (this.is_open_socket) {
-					this.fasong_to_server(message)
+				if (message == "dl") {
+					uni.showModal({
+						title: '去登录',
+						content: '是否前往登录页面登录?',
+						success(e) {
+							if (e.confirm) {
+								uni.navigateTo({
+									url: '../login/login'
+								})
+							} else {
+								uni.showToast({
+									title: '取消',
+									icon: 'none'
+								})
+							}
+						}
+					})
+
+				} else if (message == "ws") {
+					console.log("连接到ws");
+					this.connectSocketInit()
+				} else {
+					//1.首先发送信息到用户框
+					this.fasong_to_messages(message)
+					//发送信息到后端服务器
+					//如果websocket是连接的
+					if (this.is_open_socket) {
+						this.fasong_to_server(message)
+					}
 				}
+
 
 			},
 			fasong_to_server(message) {
@@ -128,9 +142,9 @@
 				this.messages.push(newList)
 				//滚动到瞄点
 				this.ne
-				this.$nextTick(function(){
+				this.$nextTick(function() {
 					this.scroll_into_view = 'aaa' + (this.messages.length - 1);
-				
+
 				})
 				//清空输入框
 				this.shurukuang = ""
@@ -138,11 +152,13 @@
 				console.log(message);
 			},
 			connectSocketInit() {
+				console.log(getApp().globalData.token);
 				this.socketTask = uni.connectSocket({
 					url: 'ws://localhost:8080/jsb/send-message',
 					method: 'GET',
 					header: {
-						'content-type': 'application/json'
+						'content-type': 'application/json',
+						'token': getApp().globalData.token
 					},
 					success(e) {
 						console.log("websocket连接成功");
@@ -159,7 +175,7 @@
 					this.is_open_socket = true;
 					// 注：只有连接正常打开中 ，才能正常成功发送消息
 					this.socketTask.send({
-						data: "客户端WS连通的第一个ping",
+						data: getApp().globalData.token,
 						async success() {
 							console.log("客户端WS连通的第一个ping发送成功");
 						},
@@ -175,9 +191,9 @@
 						console.log("收到服务器内容：" + res.data);
 						//定时器方法
 						// uniapp需要设置定时器才能实现自动滑动到最底层的效果，如果是开发小程序则不需要使用定时器
-						this.$nextTick(function(){
+						this.$nextTick(function() {
 							this.scroll_into_view = 'aaa' + (this.messages.length - 1);
-						
+
 						})
 						console.log(this.scroll_into_view)
 					});
@@ -185,6 +201,9 @@
 				// 这里仅是事件监听【如果socket关闭了会执行】
 				this.socketTask.onClose(() => {
 					console.log("已经被关闭了")
+					console.log("尝试重新连接");
+					this.is_open_socket = false;
+					this.connectSocketInit()
 				})
 
 			}
@@ -194,10 +213,11 @@
 </script>
 
 <style>
-
-	scroll-view{
+	/* 设置长度 */
+	scroll-view {
 		height: 1213.76rpx;
 	}
+
 	.user_message {
 		background: #327dfd;
 		font-size: 19px;

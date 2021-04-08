@@ -38,6 +38,7 @@
 					method: 'POST',
 					header:{
 						"Content-Type": "application/json",
+						'token': getApp().globalData.token
 					},
 					data: {
 						"username": this.username,
